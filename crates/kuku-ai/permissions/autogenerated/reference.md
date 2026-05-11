@@ -10,6 +10,7 @@ Allows the AI plugin commands.
 - `allow-ai-get-config`
 - `allow-ai-set-config`
 - `allow-ai-reset-state`
+- `allow-ai-list-models`
 - `allow-ai-list-tools`
 - `allow-ai-resolve-approval`
 - `allow-ai-register-proxy-tool`
@@ -73,6 +74,32 @@ Enables the ai_get_config command without any pre-configured scope.
 <td>
 
 Denies the ai_get_config command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`kuku-ai:allow-ai-list-models`
+
+</td>
+<td>
+
+Enables the ai_list_models command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`kuku-ai:deny-ai-list-models`
+
+</td>
+<td>
+
+Denies the ai_list_models command without any pre-configured scope.
 
 </td>
 </tr>
