@@ -1,7 +1,9 @@
 import { For, Show, createEffect, createMemo, createSignal, on, type JSX } from "solid-js";
 
 import { chatState, loadConfig, loadTools, saveConfig } from "../chat_store";
+import { aiProviderFrom, defaultModelForProvider } from "../config";
 import { formatToolIdentity, getToolInfo } from "../tool_identity";
+import type { AiProvider } from "../types";
 import { ChevronIcon, EyeIcon, EyeOffIcon } from "~/components/icons";
 import ScrollArea from "~/components/scroll_area";
 import {
@@ -36,9 +38,8 @@ function shortModelLabel(modelId: string): string {
 
 function AiSettings(): JSX.Element {
   const [apiKey, setApiKey] = createSignal("");
-  const [provider, setProvider] = createSignal<"gemini" | "remote">("gemini");
+  const [provider, setProvider] = createSignal<AiProvider>("gemini");
   const [model, setModel] = createSignal("");
-  const [serverUrl, setServerUrl] = createSignal("");
   const [showApiKey, setShowApiKey] = createSignal(false);
   const settingsRefreshToken = useSettingsRefreshToken();
 
@@ -57,7 +58,6 @@ function AiSettings(): JSX.Element {
       setApiKey(chatState.config.apiKey);
       setProvider(chatState.config.provider);
       setModel(chatState.config.model);
-      setServerUrl(chatState.config.serverUrl);
     }
   });
 
@@ -66,9 +66,16 @@ function AiSettings(): JSX.Element {
     return (
       provider() !== chatState.config.provider ||
       apiKey() !== chatState.config.apiKey ||
-      serverUrl() !== chatState.config.serverUrl
+      model() !== chatState.config.model
     );
   });
+
+  function selectProvider(value: string): void {
+    const nextProvider = aiProviderFrom(value);
+    if (nextProvider === null) return;
+    setProvider(nextProvider);
+    setModel(defaultModelForProvider(nextProvider));
+  }
 
   const saveButtonLabel = createMemo(() => {
     if (chatState.config.saving) return t("settings.plugin.ai_chat.action.saving");
@@ -85,7 +92,7 @@ function AiSettings(): JSX.Element {
           variant="primary"
           disabled={chatState.config.saving}
           class={isUnsaved() ? "ring-2 ring-warning/60 ring-offset-1 ring-offset-bg-primary" : ""}
-          onClick={() => void saveConfig(provider(), apiKey(), model(), serverUrl())}
+          onClick={() => void saveConfig(provider(), apiKey(), model())}
         >
           {saveButtonLabel()}
         </SettingsToolbarAction>
@@ -98,42 +105,44 @@ function AiSettings(): JSX.Element {
           description={t("settings.plugin.ai_chat.unsaved.description")}
         />
       </Show>
-      <SettingsBanner
-        tone="info"
-        class="select-text"
-        title={t("settings.plugin.ai_chat.guide.title")}
-        description={
-          <ol class="mt-1.5 list-decimal space-y-1.5 pl-4 text-xs/relaxed text-text-secondary [&_a]:text-text-primary [&_a]:underline [&_a]:underline-offset-2">
-            <li>
-              <strong class="text-text-primary">
-                {t("settings.plugin.ai_chat.guide.connection_label")}
-              </strong>{" "}
-              {t("settings.plugin.ai_chat.guide.connection_before_link")}{" "}
-              <a
-                href="https://aistudio.google.com/apikey"
-                target="_blank"
-                rel="noreferrer"
-                class="whitespace-nowrap"
-              >
-                AI Studio
-              </a>{" "}
-              {t("settings.plugin.ai_chat.guide.connection_after_link")}
-            </li>
-            <li>
-              <strong class="text-text-primary">
-                {t("settings.plugin.ai_chat.guide.save_label")}
-              </strong>{" "}
-              {t("settings.plugin.ai_chat.guide.save_text")}
-            </li>
-            <li>
-              <strong class="text-text-primary">
-                {t("settings.plugin.ai_chat.guide.open_chat_label")}
-              </strong>{" "}
-              {t("settings.plugin.ai_chat.guide.open_chat_text")}
-            </li>
-          </ol>
-        }
-      />
+      <Show when={provider() !== "codex"}>
+        <SettingsBanner
+          tone="info"
+          class="select-text"
+          title={t("settings.plugin.ai_chat.guide.title")}
+          description={
+            <ol class="mt-1.5 list-decimal space-y-1.5 pl-4 text-xs/relaxed text-text-secondary [&_a]:text-text-primary [&_a]:underline [&_a]:underline-offset-2">
+              <li>
+                <strong class="text-text-primary">
+                  {t("settings.plugin.ai_chat.guide.connection_label")}
+                </strong>{" "}
+                {t("settings.plugin.ai_chat.guide.connection_before_link")}{" "}
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="whitespace-nowrap"
+                >
+                  AI Studio
+                </a>{" "}
+                {t("settings.plugin.ai_chat.guide.connection_after_link")}
+              </li>
+              <li>
+                <strong class="text-text-primary">
+                  {t("settings.plugin.ai_chat.guide.save_label")}
+                </strong>{" "}
+                {t("settings.plugin.ai_chat.guide.save_text")}
+              </li>
+              <li>
+                <strong class="text-text-primary">
+                  {t("settings.plugin.ai_chat.guide.open_chat_label")}
+                </strong>{" "}
+                {t("settings.plugin.ai_chat.guide.open_chat_text")}
+              </li>
+            </ol>
+          }
+        />
+      </Show>
 
       <SettingsBanner
         tone="info"
@@ -155,10 +164,11 @@ function AiSettings(): JSX.Element {
             <SettingsSelect
               options={[
                 { value: "remote", label: t("settings.plugin.ai_chat.connection.option_remote") },
+                { value: "codex", label: t("settings.plugin.ai_chat.connection.option_codex") },
                 { value: "gemini", label: t("settings.plugin.ai_chat.connection.option_gemini") },
               ]}
               value={provider()}
-              onChange={(value) => setProvider(value as "gemini" | "remote")}
+              onChange={selectProvider}
             />
           </div>
         }
@@ -184,6 +194,30 @@ function AiSettings(): JSX.Element {
           class="py-2.5!"
           title={t("settings.plugin.ai_chat.remote_banner.title")}
           description={t("settings.plugin.ai_chat.remote_banner.description")}
+        />
+      </Show>
+
+      <Show when={provider() === "codex"}>
+        <SettingsFieldRow
+          label={t("settings.plugin.ai_chat.model.label")}
+          description={t("settings.plugin.ai_chat.model.codex_description")}
+          control={
+            <div class="w-full max-w-sm">
+              <SettingsInput
+                type="text"
+                value={model()}
+                spellcheck={false}
+                autocomplete="off"
+                onInput={(event) => setModel(event.currentTarget.value)}
+              />
+            </div>
+          }
+        />
+        <SettingsBanner
+          tone="info"
+          class="py-2.5! select-text"
+          title={t("settings.plugin.ai_chat.codex_banner.title")}
+          description={t("settings.plugin.ai_chat.codex_banner.description")}
         />
       </Show>
 

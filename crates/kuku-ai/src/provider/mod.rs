@@ -9,6 +9,7 @@ use crate::{
     types::{ChatMessage, FinishReason, ModelToolCall, TokenUsage},
 };
 
+pub mod codex;
 pub mod gemini;
 pub mod remote;
 

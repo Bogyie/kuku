@@ -3,7 +3,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error, Clone)]
 pub enum AiError {
-    #[error("AI is not configured. Set a Gemini API key first.")]
+    #[error("AI is not configured. Check the selected provider settings.")]
     NotConfigured,
     #[error("AI session not found.")]
     SessionNotFound,

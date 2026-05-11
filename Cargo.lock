@@ -2540,6 +2540,7 @@ dependencies = [
  "kuku-contract",
  "log",
  "parking_lot",
+ "reqwest",
  "rig-core",
  "serde",
  "serde_json",

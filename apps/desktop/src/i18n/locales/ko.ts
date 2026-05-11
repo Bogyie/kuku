@@ -217,14 +217,17 @@ export const KO_MESSAGES = {
   "settings.plugin.ai_chat.account_banner.open_account": "계정 열기",
   "settings.plugin.ai_chat.connection.label": "연결 방식",
   "settings.plugin.ai_chat.connection.description":
-    "로그인되어 있다면 Kuku를 먼저 추천해요. 필요한 경우에만 개인 키로 바꾸세요.",
+    "로그인되어 있다면 Kuku를 먼저 추천해요. 필요한 경우에만 개인 키나 Codex 로그인으로 바꾸세요.",
   "settings.plugin.ai_chat.connection.option_remote": "Kuku (로그인됨) - 가장 쉬워요",
+  "settings.plugin.ai_chat.connection.option_codex": "이 Mac의 Codex 로그인",
   "settings.plugin.ai_chat.connection.option_gemini": "내 Gemini API 키",
   "settings.plugin.ai_chat.model.label": "모델",
   "settings.plugin.ai_chat.model.remote_description":
     "앱에서 관리되는 값이에요. 여기서는 변경할 수 없고 앱 업데이트에 따라 바뀔 수 있어요.",
   "settings.plugin.ai_chat.model.gemini_description":
     "개인 키 모드에서는 이 빌드에서 모델을 직접 고를 수 없어요.",
+  "settings.plugin.ai_chat.model.codex_description":
+    "로컬 Codex OAuth 세션을 사용해요. 계정에 다른 모델이 필요할 때만 기본값을 바꾸세요.",
   "settings.plugin.ai_chat.remote_banner.title": "Kuku 모드 사용 중",
   "settings.plugin.ai_chat.remote_banner.description":
     "이 화면에 API 키를 넣을 필요가 없어요. Kuku / Google 로그인으로 이미 인증되었어요. 채팅 권한 문제가 보이면 설정의 계정 탭을 확인해 주세요.",
@@ -235,6 +238,9 @@ export const KO_MESSAGES = {
     "키를 만들고 복사해 주세요. 전체 값은 다시 보기 어려울 수 있어요.",
   "settings.plugin.ai_chat.gemini_banner.step3":
     "아래에 붙여넣고 저장하면 이 기기의 앱에 보관돼요.",
+  "settings.plugin.ai_chat.codex_banner.title": "Codex OAuth 사용 중",
+  "settings.plugin.ai_chat.codex_banner.description":
+    "Kuku는 ~/.codex/auth.json의 로컬 Codex 로그인을 읽어요. 채팅에서 설정되지 않았다고 나오면 터미널에서 `codex login`을 실행한 뒤 다시 시도하세요.",
   "settings.plugin.ai_chat.api_key.label": "Gemini API 키",
   "settings.plugin.ai_chat.api_key.description":
     "기본은 숨김 상태예요. 눈 아이콘으로 전체가 제대로 붙었는지 확인해 주세요.",

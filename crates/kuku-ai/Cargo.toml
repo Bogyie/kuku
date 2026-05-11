@@ -21,6 +21,7 @@ http = "1"
 kuku-contract = { path = "../kuku-contract" }
 log = "0.4"
 parking_lot = "0.12"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "stream"] }
 rig-core = "0.32"
 webpki-roots = "0.26"
 serde = { version = "1", features = ["derive"] }

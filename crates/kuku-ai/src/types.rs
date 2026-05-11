@@ -8,6 +8,7 @@ use crate::mutation::MutationPlan;
 pub enum ProviderKind {
     Gemini,
     Remote,
+    Codex,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

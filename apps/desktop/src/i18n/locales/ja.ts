@@ -221,14 +221,17 @@ export const JA_MESSAGES = {
   "settings.plugin.ai_chat.account_banner.open_account": "アカウントを開く",
   "settings.plugin.ai_chat.connection.label": "接続",
   "settings.plugin.ai_chat.connection.description":
-    "ログイン済みなら Kuku から始めるのがおすすめです。必要な場合のみ個人キーに切り替えてください。",
+    "ログイン済みなら Kuku から始めるのがおすすめです。必要な場合のみ個人キーまたは Codex ログインに切り替えてください。",
   "settings.plugin.ai_chat.connection.option_remote": "Kuku (signed in) - かんたん",
+  "settings.plugin.ai_chat.connection.option_codex": "この Mac の Codex ログイン",
   "settings.plugin.ai_chat.connection.option_gemini": "My Gemini API key",
   "settings.plugin.ai_chat.model.label": "モデル",
   "settings.plugin.ai_chat.model.remote_description":
     "アプリ管理のためここでは変更できません。更新時に自動で変わることがあります。",
   "settings.plugin.ai_chat.model.gemini_description":
     "個人キー利用時は、このビルドで別モデルを選択できません。",
+  "settings.plugin.ai_chat.model.codex_description":
+    "ローカルの Codex OAuth セッションを使います。アカウントで別モデルが必要な場合のみ既定値を変更してください。",
   "settings.plugin.ai_chat.remote_banner.title": "Kuku モード利用中",
   "settings.plugin.ai_chat.remote_banner.description":
     "この画面に API キーは不要です。Kuku / Google ログインで認証済みです。チャット許可エラーが出る場合は設定のアカウントを確認してください。",
@@ -239,6 +242,9 @@ export const JA_MESSAGES = {
     "キーを作成して一度だけコピーします。全体の値は再表示できないことがあります。",
   "settings.plugin.ai_chat.gemini_banner.step3":
     "下に貼り付けて保存すると、この端末のアプリに保存されます。",
+  "settings.plugin.ai_chat.codex_banner.title": "Codex OAuth を使用中",
+  "settings.plugin.ai_chat.codex_banner.description":
+    "Kuku は ~/.codex/auth.json のローカル Codex ログインを読みます。チャットで未設定と表示されたら、Terminal で `codex login` を実行してからもう一度試してください。",
   "settings.plugin.ai_chat.api_key.label": "Gemini API キー",
   "settings.plugin.ai_chat.api_key.description":
     "初期状態では非表示です。目のアイコンで全体が貼れているか確認できます。",

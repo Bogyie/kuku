@@ -216,14 +216,17 @@ export const EN_MESSAGES = {
   "settings.plugin.ai_chat.account_banner.open_account": "Open Account",
   "settings.plugin.ai_chat.connection.label": "Connection",
   "settings.plugin.ai_chat.connection.description":
-    "Start with Kuku if you’re logged in. Switch to your own key only if you need it.",
+    "Start with Kuku if you’re logged in. Switch to your own key or Codex login only if you need it.",
   "settings.plugin.ai_chat.connection.option_remote": "Kuku (signed in) — easiest",
+  "settings.plugin.ai_chat.connection.option_codex": "Codex login on this Mac",
   "settings.plugin.ai_chat.connection.option_gemini": "My Gemini API key",
   "settings.plugin.ai_chat.model.label": "Model",
   "settings.plugin.ai_chat.model.remote_description":
     "Managed for you. You can’t change it here; it updates when the app updates.",
   "settings.plugin.ai_chat.model.gemini_description":
     "Same for everyone with a personal key; you can’t pick another model in this build.",
+  "settings.plugin.ai_chat.model.codex_description":
+    "Uses your local Codex OAuth session. Keep the default unless your account requires another model.",
   "settings.plugin.ai_chat.remote_banner.title": "While you’re on Kuku",
   "settings.plugin.ai_chat.remote_banner.description":
     "No API key in this screen — you already authorized the app with your Kuku / Google sign-in. If chat says it’s not allowed, check Account in settings.",
@@ -234,6 +237,9 @@ export const EN_MESSAGES = {
     "Create a key, copy it once — you won’t see the full value again.",
   "settings.plugin.ai_chat.gemini_banner.step3":
     "Paste it below, then press Save. The key stays in this app on this device.",
+  "settings.plugin.ai_chat.codex_banner.title": "Using Codex OAuth",
+  "settings.plugin.ai_chat.codex_banner.description":
+    "Kuku reads the local Codex login at ~/.codex/auth.json. If chat says it is not configured, run `codex login` in Terminal and try again.",
   "settings.plugin.ai_chat.api_key.label": "Gemini API key",
   "settings.plugin.ai_chat.api_key.description":
     "The field is hidden by default. Use the eye to double-check you pasted the whole key.",

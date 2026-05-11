@@ -97,6 +97,73 @@ describe("ai_chat chat_store config", () => {
     expect(chat.chatState.config.serverUrl).toBe("http://localhost:8080");
   });
 
+  it("preserves persisted Codex model override while still pinning server url", async () => {
+    mockInvoke.mockImplementation(async (command: string) => {
+      switch (command) {
+        case "plugin_get_settings_with_secrets":
+          return {
+            provider: "codex",
+            apiKey: null,
+            model: "gpt-custom-codex",
+            serverUrl: "https://www.kuku.mom",
+            roundLimit: 16,
+            proxyToolTimeoutMs: 30_000,
+          };
+        case "plugin:kuku-ai|ai_set_config":
+          return undefined;
+        default:
+          throw new Error(`unexpected invoke: ${command}`);
+      }
+    });
+
+    const chat = await loadChatStoreModule();
+
+    await chat.loadConfig();
+
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:kuku-ai|ai_set_config", {
+      config: {
+        provider: "codex",
+        apiKey: null,
+        model: "gpt-custom-codex",
+        serverUrl: "http://localhost:8080",
+        roundLimit: 16,
+        proxyToolTimeoutMs: 30_000,
+      },
+    });
+    expect(chat.chatState.config.provider).toBe("codex");
+    expect(chat.chatState.config.model).toBe("gpt-custom-codex");
+  });
+
+  it("uses gpt-5.5 as the default Codex model", async () => {
+    mockInvoke.mockImplementation(async (command: string) => {
+      switch (command) {
+        case "plugin_save_settings_with_secrets":
+        case "plugin:kuku-ai|ai_set_config":
+          return undefined;
+        default:
+          throw new Error(`unexpected invoke: ${command}`);
+      }
+    });
+
+    const chat = await loadChatStoreModule();
+
+    await chat.saveConfig("codex", "", "");
+
+    expect(mockInvoke).toHaveBeenNthCalledWith(1, "plugin_save_settings_with_secrets", {
+      pluginId: "ai-chat",
+      settings: {
+        provider: "codex",
+        apiKey: null,
+        model: "gpt-5.5",
+        serverUrl: "http://localhost:8080",
+        roundLimit: 12,
+        proxyToolTimeoutMs: 15_000,
+      },
+      secureKeys: ["apiKey"],
+    });
+    expect(chat.chatState.config.model).toBe("gpt-5.5");
+  });
+
   it("saves plugin settings before syncing runtime config", async () => {
     mockInvoke.mockImplementation(async (command: string) => {
       switch (command) {
@@ -110,15 +177,15 @@ describe("ai_chat chat_store config", () => {
 
     const chat = await loadChatStoreModule();
 
-    await chat.saveConfig("remote", "", "saved-model", "https://saved");
+    await chat.saveConfig("remote", "", "saved-model");
 
     expect(mockInvoke).toHaveBeenNthCalledWith(1, "plugin_save_settings_with_secrets", {
       pluginId: "ai-chat",
       settings: {
         provider: "remote",
         apiKey: null,
-        model: "saved-model",
-        serverUrl: "https://saved",
+        model: "gemini-3.1-flash-lite-preview",
+        serverUrl: "http://localhost:8080",
         roundLimit: 12,
         proxyToolTimeoutMs: 15_000,
       },
@@ -128,8 +195,8 @@ describe("ai_chat chat_store config", () => {
       config: {
         provider: "remote",
         apiKey: null,
-        model: "saved-model",
-        serverUrl: "https://saved",
+        model: "gemini-3.1-flash-lite-preview",
+        serverUrl: "http://localhost:8080",
         roundLimit: 12,
         proxyToolTimeoutMs: 15_000,
       },

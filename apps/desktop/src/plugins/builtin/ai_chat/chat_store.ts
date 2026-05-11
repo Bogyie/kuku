@@ -13,6 +13,7 @@ import {
   DEFAULT_SERVER_URL,
   createDefaultAiConfig,
   normalizeAiConfig,
+  pinnedModelForConfig,
 } from "./config";
 import { createContextSnapshotSource } from "./context_snapshot";
 import { appendFileAttachment, prepareEmbeddedFilesForSend } from "./file_embed";
@@ -20,6 +21,7 @@ import { hasRespondingSession } from "./responding_state";
 import { prepareSelectedTextForSend } from "./selected_text_context";
 import type {
   AiConfig,
+  AiProvider,
   ChatApprovalMessage,
   ChatFileAttachmentDraft,
   ChatMessage,
@@ -84,6 +86,10 @@ function createDefaultConfigState(): ChatStoreState["config"] {
     toolsError: null,
     availableTools: [],
   };
+}
+
+function positiveNumberOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
 function getActiveSession(): ChatSessionState | null {
@@ -657,22 +663,21 @@ async function loadConfig(): Promise<void> {
       secureKeys: [...AI_CHAT_SECURE_KEYS],
       normalize: (raw) => normalizeAiConfig(raw),
     });
-    // Server URL and model are pinned to the build's bundled defaults —
-    // they identify which backend this build targets and must not drift
-    // into an older saved value from a previous variant or stale install.
+    // Server URL is pinned to the build target. Non-Codex models are also
+    // pinned; Codex keeps the explicit model because it talks directly to OpenAI.
     config.serverUrl = DEFAULT_SERVER_URL;
-    config.model = DEFAULT_MODEL;
+    config.model = pinnedModelForConfig(config.provider, config.model);
     await invoke<void>("plugin:kuku-ai|ai_set_config", { config });
-    setChatState("config", "rawConfig", config as unknown as Record<string, unknown>);
+    setChatState("config", "rawConfig", { ...config });
     setChatState("config", "apiKey", config.apiKey ?? "");
-    setChatState("config", "provider", config.provider ?? DEFAULT_PROVIDER);
+    setChatState("config", "provider", config.provider);
     setChatState("config", "serverUrl", config.serverUrl);
     setChatState("config", "model", config.model);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const defaults = createDefaultAiConfig();
     setChatState("config", "apiKey", defaults.apiKey ?? "");
-    setChatState("config", "provider", defaults.provider ?? DEFAULT_PROVIDER);
+    setChatState("config", "provider", defaults.provider);
     setChatState("config", "serverUrl", defaults.serverUrl ?? DEFAULT_SERVER_URL);
     setChatState("config", "model", defaults.model);
     setChatState("config", "rawConfig", {});
@@ -683,30 +688,32 @@ async function loadConfig(): Promise<void> {
 }
 
 async function saveConfig(
-  nextProvider: "gemini" | "remote",
+  nextProvider: AiProvider,
   nextApiKey: string,
   nextModel: string,
-  nextServerUrl: string,
 ): Promise<void> {
   setChatState("config", "saving", true);
   setChatState("config", "error", null);
   try {
-    const currentConfig = chatState.config.rawConfig as Partial<AiConfig>;
+    const rawConfig = chatState.config.rawConfig;
+    const apiKey = nextApiKey.trim();
+    const model = pinnedModelForConfig(nextProvider, nextModel);
+    const serverUrl = DEFAULT_SERVER_URL;
     const nextConfig: AiConfig = {
       provider: nextProvider,
-      apiKey: nextApiKey || null,
-      model: nextModel || DEFAULT_MODEL,
-      serverUrl: nextServerUrl || DEFAULT_SERVER_URL,
-      roundLimit: currentConfig.roundLimit ?? DEFAULT_ROUND_LIMIT,
-      proxyToolTimeoutMs: currentConfig.proxyToolTimeoutMs ?? DEFAULT_PROXY_TIMEOUT_MS,
+      apiKey: apiKey || null,
+      model,
+      serverUrl,
+      roundLimit: positiveNumberOr(rawConfig.roundLimit, DEFAULT_ROUND_LIMIT),
+      proxyToolTimeoutMs: positiveNumberOr(rawConfig.proxyToolTimeoutMs, DEFAULT_PROXY_TIMEOUT_MS),
     };
     await savePluginSettings(AI_CHAT_SETTINGS_PLUGIN_ID, nextConfig, [...AI_CHAT_SECURE_KEYS]);
     await invoke<void>("plugin:kuku-ai|ai_set_config", { config: nextConfig });
-    setChatState("config", "rawConfig", nextConfig as unknown as Record<string, unknown>);
-    setChatState("config", "apiKey", nextApiKey);
+    setChatState("config", "rawConfig", { ...nextConfig });
+    setChatState("config", "apiKey", apiKey);
     setChatState("config", "provider", nextProvider);
-    setChatState("config", "serverUrl", nextServerUrl || DEFAULT_SERVER_URL);
-    setChatState("config", "model", nextModel || DEFAULT_MODEL);
+    setChatState("config", "serverUrl", serverUrl);
+    setChatState("config", "model", model);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setChatState("config", "error", message);
