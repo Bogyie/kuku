@@ -230,7 +230,7 @@ export const KO_MESSAGES = {
     "로컬 Codex OAuth 세션을 사용해요. 계정에 다른 모델이 필요할 때만 기본값을 바꾸세요.",
   "settings.plugin.ai_chat.model.loading": "모델을 불러오는 중...",
   "settings.plugin.ai_chat.model.load_failed":
-    "Codex 모델을 불러오지 못했어요. 현재 모델을 유지합니다. {error}",
+    "Codex 모델을 불러오지 못했어요. 현재 모델을 유지합니다. {{error}}",
   "settings.plugin.ai_chat.remote_banner.title": "Kuku 모드 사용 중",
   "settings.plugin.ai_chat.remote_banner.description":
     "이 화면에 API 키를 넣을 필요가 없어요. Kuku / Google 로그인으로 이미 인증되었어요. 채팅 권한 문제가 보이면 설정의 계정 탭을 확인해 주세요.",

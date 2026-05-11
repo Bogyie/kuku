@@ -229,7 +229,7 @@ export const EN_MESSAGES = {
     "Uses your local Codex OAuth session. Keep the default unless your account requires another model.",
   "settings.plugin.ai_chat.model.loading": "Loading models...",
   "settings.plugin.ai_chat.model.load_failed":
-    "Could not load Codex models. Keeping the current model. {error}",
+    "Could not load Codex models. Keeping the current model. {{error}}",
   "settings.plugin.ai_chat.remote_banner.title": "While you’re on Kuku",
   "settings.plugin.ai_chat.remote_banner.description":
     "No API key in this screen — you already authorized the app with your Kuku / Google sign-in. If chat says it’s not allowed, check Account in settings.",

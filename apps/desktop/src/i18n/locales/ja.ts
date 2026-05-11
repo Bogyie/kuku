@@ -234,7 +234,7 @@ export const JA_MESSAGES = {
     "ローカルの Codex OAuth セッションを使います。アカウントで別モデルが必要な場合のみ既定値を変更してください。",
   "settings.plugin.ai_chat.model.loading": "モデルを読み込み中...",
   "settings.plugin.ai_chat.model.load_failed":
-    "Codex モデルを読み込めませんでした。現在のモデルを維持します。{error}",
+    "Codex モデルを読み込めませんでした。現在のモデルを維持します。{{error}}",
   "settings.plugin.ai_chat.remote_banner.title": "Kuku モード利用中",
   "settings.plugin.ai_chat.remote_banner.description":
     "この画面に API キーは不要です。Kuku / Google ログインで認証済みです。チャット許可エラーが出る場合は設定のアカウントを確認してください。",
