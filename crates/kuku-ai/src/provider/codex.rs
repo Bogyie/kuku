@@ -26,7 +26,9 @@ use crate::{
 };
 
 const OPENAI_RESPONSES_URL: &str = "https://api.openai.com/v1/responses";
+const CODEX_RESPONSES_URL: &str = "https://chatgpt.com/backend-api/codex/responses";
 const OPENAI_OAUTH_TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
+const OPENAI_BETA_HEADER: &str = "responses_websockets=2026-02-06";
 const CODEX_OAUTH_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const CODEX_AUTH_MISSING: &str =
     "Codex OAuth token not found. Run `codex login` in a terminal, then try again.";
@@ -71,13 +73,18 @@ impl CompletionBackend for CodexBackend {
         let body = responses_request_body(model, &request)?;
 
         let token = read_codex_access_token()?;
-        let mut response = self.send_responses_request(&token.value, &body).await?;
+        let responses_url = token.source.responses_url();
+        let mut response = self
+            .send_responses_request(responses_url, &token.value, &body)
+            .await?;
         if is_auth_error(response.status())
-            && let CodexTokenSource::OAuth { auth_path } = token.source
+            && let CodexTokenSource::ChatGptOAuth { auth_path } = &token.source
             && let Some(refreshed) =
-                refresh_codex_access_token(&self.client, &auth_path, &token.value).await?
+                refresh_codex_access_token(&self.client, auth_path, &token.value).await?
         {
-            response = self.send_responses_request(&refreshed, &body).await?;
+            response = self
+                .send_responses_request(responses_url, &refreshed, &body)
+                .await?;
         }
 
         let status = response.status();
@@ -152,13 +159,22 @@ impl CompletionBackend for CodexBackend {
 impl CodexBackend {
     async fn send_responses_request(
         &self,
+        responses_url: &str,
         token: &str,
         body: &Value,
     ) -> Result<reqwest::Response, AiError> {
-        self.client
-            .post(OPENAI_RESPONSES_URL)
+        let request = self
+            .client
+            .post(responses_url)
             .bearer_auth(token)
-            .header("accept", "text/event-stream")
+            .header("accept", "text/event-stream");
+        let request = if responses_url == CODEX_RESPONSES_URL {
+            request.header("OpenAI-Beta", OPENAI_BETA_HEADER)
+        } else {
+            request
+        };
+
+        request
             .json(body)
             .send()
             .await
@@ -470,6 +486,7 @@ fn sse_data(raw_event: &str) -> Option<String> {
 struct CodexAuthFile {
     #[serde(rename = "OPENAI_API_KEY")]
     openai_api_key: Option<String>,
+    auth_mode: Option<String>,
     tokens: Option<CodexTokens>,
 }
 
@@ -485,22 +502,33 @@ struct CodexAccessToken {
 }
 
 enum CodexTokenSource {
-    OAuth { auth_path: PathBuf },
+    ChatGptOAuth { auth_path: PathBuf },
     ApiKey,
+}
+
+impl CodexTokenSource {
+    fn responses_url(&self) -> &'static str {
+        match self {
+            CodexTokenSource::ChatGptOAuth { .. } => CODEX_RESPONSES_URL,
+            CodexTokenSource::ApiKey => OPENAI_RESPONSES_URL,
+        }
+    }
 }
 
 fn read_codex_access_token() -> Result<CodexAccessToken, AiError> {
     let path = codex_auth_path()?;
     let auth = read_codex_auth_file(&path)?;
-    if let Some(token) = auth
-        .tokens
-        .and_then(|tokens| tokens.access_token)
-        .map(|token| token.trim().to_string())
-        .filter(|token| !token.is_empty())
+    let uses_api_key = auth.auth_mode.as_deref().map(str::trim) == Some("apikey");
+    if !uses_api_key
+        && let Some(token) = auth
+            .tokens
+            .and_then(|tokens| tokens.access_token)
+            .map(|token| token.trim().to_string())
+            .filter(|token| !token.is_empty())
     {
         return Ok(CodexAccessToken {
             value: token,
-            source: CodexTokenSource::OAuth { auth_path: path },
+            source: CodexTokenSource::ChatGptOAuth { auth_path: path },
         });
     }
 
@@ -889,6 +917,23 @@ mod tests {
     #[test]
     fn empty_error_body_has_readable_message() {
         assert_eq!(error_message_from_body(" \n"), "empty response body");
+    }
+
+    #[test]
+    fn chatgpt_oauth_uses_codex_responses_endpoint() {
+        let source = CodexTokenSource::ChatGptOAuth {
+            auth_path: PathBuf::from("auth.json"),
+        };
+
+        assert_eq!(source.responses_url(), CODEX_RESPONSES_URL);
+    }
+
+    #[test]
+    fn api_key_uses_openai_responses_endpoint() {
+        assert_eq!(
+            CodexTokenSource::ApiKey.responses_url(),
+            OPENAI_RESPONSES_URL
+        );
     }
 
     #[test]
