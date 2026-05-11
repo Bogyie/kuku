@@ -131,6 +131,14 @@ impl AiState {
         self.inner.tools.descriptors()
     }
 
+    pub async fn list_models(&self, config: Option<AiConfig>) -> Result<Vec<String>, AiError> {
+        let config = config.unwrap_or_else(|| self.config());
+        let Some(backend) = build_backend(&config)? else {
+            return Ok(Vec::new());
+        };
+        backend.list_models().await
+    }
+
     pub fn tools(&self) -> &ToolRegistry {
         &self.inner.tools
     }

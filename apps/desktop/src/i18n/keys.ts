@@ -193,6 +193,8 @@ export const MESSAGE_KEYS = [
   "settings.plugin.ai_chat.model.remote_description",
   "settings.plugin.ai_chat.model.gemini_description",
   "settings.plugin.ai_chat.model.codex_description",
+  "settings.plugin.ai_chat.model.loading",
+  "settings.plugin.ai_chat.model.load_failed",
   "settings.plugin.ai_chat.remote_banner.title",
   "settings.plugin.ai_chat.remote_banner.description",
   "settings.plugin.ai_chat.gemini_banner.title",

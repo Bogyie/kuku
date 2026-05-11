@@ -42,6 +42,5 @@ pub trait CompletionBackend: Send + Sync {
         request: CompletionTurnRequest,
     ) -> Result<CompletionTurnStream, AiError>;
 
-    #[allow(dead_code)]
     async fn list_models(&self) -> Result<Vec<String>, AiError>;
 }

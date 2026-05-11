@@ -26,7 +26,10 @@ use crate::{
 };
 
 const OPENAI_RESPONSES_URL: &str = "https://api.openai.com/v1/responses";
+const OPENAI_MODELS_URL: &str = "https://api.openai.com/v1/models";
 const CODEX_RESPONSES_URL: &str = "https://chatgpt.com/backend-api/codex/responses";
+const CODEX_MODELS_URL: &str =
+    "https://chatgpt.com/backend-api/codex/models?client_version=0.130.0";
 const OPENAI_OAUTH_TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
 const OPENAI_BETA_HEADER: &str = "responses_websockets=2026-02-06";
 const CODEX_OAUTH_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
@@ -152,7 +155,35 @@ impl CompletionBackend for CodexBackend {
     }
 
     async fn list_models(&self) -> Result<Vec<String>, AiError> {
-        Ok(vec![self.model.clone()])
+        let token = read_codex_access_token()?;
+        let mut response = send_models_request(&self.client, &token.value, &token.source).await?;
+        if is_auth_error(response.status())
+            && let CodexTokenSource::ChatGptOAuth { auth_path } = &token.source
+            && let Some(refreshed) =
+                refresh_codex_access_token(&self.client, auth_path, &token.value).await?
+        {
+            response = send_models_request(&self.client, &refreshed, &token.source).await?;
+        }
+
+        let status = response.status();
+        if is_auth_error(status) {
+            return Err(AiError::Unauthorized);
+        }
+
+        let body = response.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(AiError::ProviderError(format!(
+                "Codex model list request failed ({status}): {}",
+                error_message_from_body(&body)
+            )));
+        }
+
+        let models = model_ids_from_body(&token.source, &body)?;
+        if models.is_empty() {
+            Ok(vec![self.model.clone()])
+        } else {
+            Ok(models)
+        }
     }
 }
 
@@ -496,6 +527,27 @@ struct CodexTokens {
     refresh_token: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct CodexModelsResponse {
+    models: Vec<CodexModel>,
+}
+
+#[derive(Deserialize)]
+struct CodexModel {
+    slug: Option<String>,
+    visibility: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct OpenAiModelsResponse {
+    data: Vec<OpenAiModel>,
+}
+
+#[derive(Deserialize)]
+struct OpenAiModel {
+    id: String,
+}
+
 struct CodexAccessToken {
     value: String,
     source: CodexTokenSource,
@@ -559,6 +611,73 @@ fn codex_auth_path() -> Result<PathBuf, AiError> {
     let home = dirs::home_dir()
         .ok_or_else(|| AiError::State("Cannot resolve the user home directory".to_string()))?;
     Ok(home.join(".codex").join("auth.json"))
+}
+
+async fn send_models_request(
+    client: &reqwest::Client,
+    token: &str,
+    source: &CodexTokenSource,
+) -> Result<reqwest::Response, AiError> {
+    let request = match source {
+        CodexTokenSource::ChatGptOAuth { .. } => {
+            let request = client
+                .get(CODEX_MODELS_URL)
+                .header("accept", "application/json")
+                .header("OpenAI-Beta", OPENAI_BETA_HEADER)
+                .header("x-client-request-id", uuid::Uuid::new_v4().to_string());
+            if let Some(installation_id) = read_codex_installation_id() {
+                request.header("x-codex-installation-id", installation_id)
+            } else {
+                request
+            }
+        }
+        CodexTokenSource::ApiKey => client
+            .get(OPENAI_MODELS_URL)
+            .header("accept", "application/json"),
+    };
+
+    request
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|error| AiError::ProviderError(error.to_string()))
+}
+
+fn model_ids_from_body(source: &CodexTokenSource, body: &str) -> Result<Vec<String>, AiError> {
+    match source {
+        CodexTokenSource::ChatGptOAuth { .. } => {
+            let response: CodexModelsResponse = serde_json::from_str(body).map_err(|error| {
+                AiError::ProviderError(format!("Invalid Codex models response: {error}"))
+            })?;
+            Ok(response
+                .models
+                .into_iter()
+                .filter(|model| model.visibility.as_deref() == Some("list"))
+                .filter_map(|model| model.slug)
+                .map(|slug| slug.trim().to_string())
+                .filter(|slug| !slug.is_empty())
+                .collect())
+        }
+        CodexTokenSource::ApiKey => {
+            let response: OpenAiModelsResponse = serde_json::from_str(body).map_err(|error| {
+                AiError::ProviderError(format!("Invalid OpenAI models response: {error}"))
+            })?;
+            Ok(response
+                .data
+                .into_iter()
+                .map(|model| model.id.trim().to_string())
+                .filter(|id| !id.is_empty())
+                .collect())
+        }
+    }
+}
+
+fn read_codex_installation_id() -> Option<String> {
+    let path = dirs::home_dir()?.join(".codex").join("installation_id");
+    fs::read_to_string(path)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 #[derive(Deserialize)]
@@ -934,6 +1053,43 @@ mod tests {
             CodexTokenSource::ApiKey.responses_url(),
             OPENAI_RESPONSES_URL
         );
+    }
+
+    #[test]
+    fn codex_model_list_uses_visible_slugs() {
+        let body = json!({
+            "models": [
+                { "slug": "gpt-5.5", "visibility": "list" },
+                { "slug": "codex-auto-review", "visibility": "hide" },
+                { "slug": "  gpt-5.4-mini  ", "visibility": "list" },
+                { "slug": "", "visibility": "list" }
+            ]
+        })
+        .to_string();
+        let source = CodexTokenSource::ChatGptOAuth {
+            auth_path: PathBuf::from("auth.json"),
+        };
+
+        let models = model_ids_from_body(&source, &body).expect("models should parse");
+
+        assert_eq!(models, vec!["gpt-5.5", "gpt-5.4-mini"]);
+    }
+
+    #[test]
+    fn openai_model_list_uses_data_ids() {
+        let body = json!({
+            "data": [
+                { "id": "gpt-5.5" },
+                { "id": "  gpt-5.4  " },
+                { "id": "" }
+            ]
+        })
+        .to_string();
+
+        let models =
+            model_ids_from_body(&CodexTokenSource::ApiKey, &body).expect("models should parse");
+
+        assert_eq!(models, vec!["gpt-5.5", "gpt-5.4"]);
     }
 
     #[test]

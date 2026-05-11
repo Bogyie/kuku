@@ -164,6 +164,33 @@ describe("ai_chat chat_store config", () => {
     expect(chat.chatState.config.model).toBe("gpt-5.5");
   });
 
+  it("lists models with normalized transient config", async () => {
+    mockInvoke.mockImplementation(async (command: string) => {
+      switch (command) {
+        case "plugin:kuku-ai|ai_list_models":
+          return ["gpt-5.5", "gpt-5.4"];
+        default:
+          throw new Error(`unexpected invoke: ${command}`);
+      }
+    });
+
+    const chat = await loadChatStoreModule();
+
+    const models = await chat.listModels("codex", "", "");
+
+    expect(models).toEqual(["gpt-5.5", "gpt-5.4"]);
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:kuku-ai|ai_list_models", {
+      config: {
+        provider: "codex",
+        apiKey: null,
+        model: "gpt-5.5",
+        serverUrl: "http://localhost:8080",
+        roundLimit: 12,
+        proxyToolTimeoutMs: 15_000,
+      },
+    });
+  });
+
   it("saves plugin settings before syncing runtime config", async () => {
     mockInvoke.mockImplementation(async (command: string) => {
       switch (command) {

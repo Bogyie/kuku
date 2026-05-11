@@ -1,6 +1,6 @@
 import { For, Show, createEffect, createMemo, createSignal, on, type JSX } from "solid-js";
 
-import { chatState, loadConfig, loadTools, saveConfig } from "../chat_store";
+import { chatState, listModels, loadConfig, loadTools, saveConfig } from "../chat_store";
 import { aiProviderFrom, defaultModelForProvider } from "../config";
 import { formatToolIdentity, getToolInfo } from "../tool_identity";
 import type { AiProvider } from "../types";
@@ -30,6 +30,12 @@ function openAccountSettings(): void {
 
 function shortModelLabel(modelId: string): string {
   if (!modelId) return "—";
+  if (modelId === "gpt-5.5") return "GPT-5.5";
+  if (modelId === "gpt-5.4") return "GPT-5.4";
+  if (modelId === "gpt-5.4-mini") return "GPT-5.4 Mini";
+  if (modelId === "gpt-5.3-codex") return "GPT-5.3 Codex";
+  if (modelId === "gpt-5.3-codex-spark") return "GPT-5.3 Codex Spark";
+  if (modelId === "gpt-5.2") return "GPT-5.2";
   if (modelId.includes("gemini-3.1-flash")) return "Gemini 3.1 Flash (preview)";
   if (modelId.includes("flash")) return "Gemini Flash";
   if (modelId.includes("pro")) return "Gemini Pro";
@@ -40,8 +46,12 @@ function AiSettings(): JSX.Element {
   const [apiKey, setApiKey] = createSignal("");
   const [provider, setProvider] = createSignal<AiProvider>("gemini");
   const [model, setModel] = createSignal("");
+  const [codexModels, setCodexModels] = createSignal<string[]>([]);
+  const [codexModelsLoading, setCodexModelsLoading] = createSignal(false);
+  const [codexModelsError, setCodexModelsError] = createSignal<string | null>(null);
   const [showApiKey, setShowApiKey] = createSignal(false);
   const settingsRefreshToken = useSettingsRefreshToken();
+  let codexModelsRequestId = 0;
 
   createEffect(
     on(
@@ -76,6 +86,50 @@ function AiSettings(): JSX.Element {
     setProvider(nextProvider);
     setModel(defaultModelForProvider(nextProvider));
   }
+
+  function codexModelOptions(): { value: string; label: string }[] {
+    const currentModel = model().trim() || defaultModelForProvider("codex");
+    const values = codexModels().includes(currentModel)
+      ? codexModels()
+      : [currentModel, ...codexModels()];
+    return values.map((value) => ({ value, label: shortModelLabel(value) }));
+  }
+
+  async function refreshCodexModels(): Promise<void> {
+    const requestId = ++codexModelsRequestId;
+    setCodexModelsLoading(true);
+    setCodexModelsError(null);
+    try {
+      const models = await listModels("codex", apiKey(), model());
+      if (requestId !== codexModelsRequestId) return;
+      setCodexModels(models);
+      if (!model().trim() && models.length > 0) setModel(models[0]);
+    } catch (error) {
+      if (requestId !== codexModelsRequestId) return;
+      const message = error instanceof Error ? error.message : String(error);
+      setCodexModels([]);
+      setCodexModelsError(message);
+    } finally {
+      if (requestId === codexModelsRequestId) setCodexModelsLoading(false);
+    }
+  }
+
+  createEffect(
+    on(
+      provider,
+      (nextProvider) => {
+        if (nextProvider === "codex") {
+          void refreshCodexModels();
+        } else {
+          codexModelsRequestId += 1;
+          setCodexModels([]);
+          setCodexModelsError(null);
+          setCodexModelsLoading(false);
+        }
+      },
+      { defer: false },
+    ),
+  );
 
   const saveButtonLabel = createMemo(() => {
     if (chatState.config.saving) return t("settings.plugin.ai_chat.action.saving");
@@ -202,17 +256,30 @@ function AiSettings(): JSX.Element {
           label={t("settings.plugin.ai_chat.model.label")}
           description={t("settings.plugin.ai_chat.model.codex_description")}
           control={
-            <div class="w-full max-w-sm">
-              <SettingsInput
-                type="text"
+            <div class="w-full max-w-sm space-y-1.5">
+              <SettingsSelect
+                options={codexModelOptions()}
                 value={model()}
-                spellcheck={false}
-                autocomplete="off"
-                onInput={(event) => setModel(event.currentTarget.value)}
+                disabled={codexModelsLoading()}
+                onChange={setModel}
               />
+              <Show when={codexModelsLoading()}>
+                <p class="text-[0.6875rem] text-text-muted">
+                  {t("settings.plugin.ai_chat.model.loading")}
+                </p>
+              </Show>
             </div>
           }
         />
+        <Show when={codexModelsError()}>
+          {(error) => (
+            <SettingsBanner
+              tone="warning"
+              class="py-2.5!"
+              description={tf("settings.plugin.ai_chat.model.load_failed", { error: error() })}
+            />
+          )}
+        </Show>
         <SettingsBanner
           tone="info"
           class="py-2.5! select-text"

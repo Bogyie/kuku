@@ -744,6 +744,24 @@ async function loadTools(): Promise<void> {
   }
 }
 
+async function listModels(
+  nextProvider: AiProvider,
+  nextApiKey: string,
+  nextModel: string,
+): Promise<string[]> {
+  const rawConfig = chatState.config.rawConfig;
+  const apiKey = nextApiKey.trim();
+  const config: AiConfig = {
+    provider: nextProvider,
+    apiKey: apiKey || null,
+    model: pinnedModelForConfig(nextProvider, nextModel),
+    serverUrl: DEFAULT_SERVER_URL,
+    roundLimit: positiveNumberOr(rawConfig.roundLimit, DEFAULT_ROUND_LIMIT),
+    proxyToolTimeoutMs: positiveNumberOr(rawConfig.proxyToolTimeoutMs, DEFAULT_PROXY_TIMEOUT_MS),
+  };
+  return invoke<string[]>("plugin:kuku-ai|ai_list_models", { config });
+}
+
 async function resolveApproval(
   sessionId: string,
   callId: string,
@@ -787,6 +805,7 @@ export {
   getActiveSession,
   resetChatState,
   loadConfig,
+  listModels,
   loadTools,
   removeFileAttachment,
   resetToSession,

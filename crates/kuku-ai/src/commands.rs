@@ -69,6 +69,17 @@ pub async fn ai_reset_state(state: State<'_, AiState>) -> Result<(), String> {
 }
 
 #[command]
+pub async fn ai_list_models(
+    state: State<'_, AiState>,
+    config: Option<AiConfig>,
+) -> Result<Vec<String>, String> {
+    state
+        .list_models(config)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[command]
 pub async fn ai_list_tools(
     state: State<'_, AiState>,
 ) -> Result<Vec<crate::ToolDescriptor>, String> {
